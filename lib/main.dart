@@ -8,9 +8,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'test app',
-      home: RandomWords(),
+      home: const RandomWords(),
+      theme: ThemeData(
+          appBarTheme: const AppBarTheme(
+              backgroundColor: Colors.white, foregroundColor: Colors.black)),
     );
   }
 }
@@ -24,14 +27,68 @@ class RandomWords extends StatefulWidget {
 
 class _RandomWordsState extends State<RandomWords> {
   final _suggestions = <WordPair>[];
+  final _saved = <WordPair>{};
   final _biggerFont = const TextStyle(fontSize: 18.0);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(title: const Text("app bar")),
+        appBar: AppBar(
+          title: const Text("app bar"),
+          actions: [
+            IconButton(onPressed: _pushSaved, icon: const Icon(Icons.list))
+          ],
+        ),
         body: _buildSuggestions());
   }
+
+  void _pushSaved() =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (context) {
+        final tiles = _saved.map((pair) => Dismissible(
+            key: Key(pair.asPascalCase),
+            direction: DismissDirection.endToStart,
+            onDismissed: (direction) {
+              setState(() => _saved.remove(pair));
+              showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                        content: Column(children: [
+                          Text('${pair.asPascalCase} removed!'),
+                          TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: TextButton.styleFrom(),
+                              child: const Text("OK")),
+                        ], mainAxisSize: MainAxisSize.min),
+                      ));
+            },
+            background: Container(color: Colors.red),
+            child: ListTile(
+              title: Text(
+                pair.asPascalCase,
+                style: _biggerFont,
+              ),
+              onTap: () => showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                        content: Column(children: [
+                          Text(pair.asPascalCase),
+                          TextButton(
+                              // onPressed: () => Navigator.pop(context),
+                              onPressed: null,
+                              style: TextButton.styleFrom(),
+                              child: const Text("OK")),
+                        ], mainAxisSize: MainAxisSize.min),
+                      )),
+            )));
+        final divided = tiles.isNotEmpty
+            ? ListTile.divideTiles(context: context, tiles: tiles).toList()
+            : <Widget>[];
+
+        return Scaffold(
+          appBar: AppBar(title: const Text("Saved Suggestions")),
+          body: ListView(children: divided),
+        );
+      }));
 
   Widget _buildSuggestions() {
     return ListView.builder(
@@ -48,11 +105,24 @@ class _RandomWordsState extends State<RandomWords> {
   }
 
   Widget _buildRow(WordPair pair) {
+    final alreadySaved = _saved.contains(pair);
     return ListTile(
       title: Text(
         pair.asPascalCase,
         style: _biggerFont,
       ),
+      trailing: Icon(
+        alreadySaved ? Icons.favorite : Icons.favorite_border,
+        color: alreadySaved ? Colors.red : null,
+        semanticLabel: alreadySaved ? 'Remove from saved' : "save",
+      ),
+      onTap: () => setState(() {
+        if (alreadySaved) {
+          _saved.remove(pair);
+        } else {
+          _saved.add(pair);
+        }
+      }),
     );
   }
 }
